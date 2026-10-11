@@ -56,7 +56,7 @@
         .btn-admin { background-color: var(--admin-color); }
         .admin-panel {
             border: 2px solid var(--admin-color);
-            display: none; /* Скрыто от обычных игроков */
+            display: none; /* Скрыто по умолчанию */
         }
         input, select {
             background: #1c1c24;
@@ -166,16 +166,15 @@
 
     // Запуск системы
     document.addEventListener("DOMContentLoaded", () => {
-        // Проверяем текущего игрока в localStorage
         let myId = localStorage.getItem("current_player_id");
         
-        // Защита: если зашли вы или кэш чист — выдаем вам ваш OWNER_ID навсегда
+        // Автоматически ставим ваш ID, если зашли вы или кэш чист
         if (!myId || myId === "BR-000000") {
             myId = OWNER_ID;
             localStorage.setItem("current_player_id", myId);
         }
 
-        // Инициализируем пустые базы, если их нет
+        // Инициализируем локальные хранилища данных
         if (!localStorage.getItem("db_admins")) localStorage.setItem("db_admins", JSON.stringify([OWNER_ID]));
         if (!localStorage.getItem("db_promos")) localStorage.setItem("db_promos", JSON.stringify({"BRAINROT": "💎 Премиум кейс"}));
         if (!localStorage.getItem("player_balance")) localStorage.setItem("player_balance", "1000");
@@ -202,7 +201,7 @@
             invDiv.innerHTML = `<em style="color: #71717a;">Инвентарь пуст</em>`;
         }
 
-        // ПРОВЕРКА ПРАВ: Если ваш ID в списке админов — включаем секретные кнопки
+        // Защита прав доступа: сверяем текущий ID со списком админов
         if (admins.includes(myId) || myId === OWNER_ID) {
             document.getElementById("super-admin-panel").style.display = "block";
             document.getElementById("role-badge").innerText = "👑 Administrator";
@@ -210,7 +209,7 @@
         }
     }
 
-    // [АДМИН] Создать игрока админом
+    // [АДМИН] Назначить нового администратора
     function adminMakeAdmin() {
         const inputId = document.getElementById("target-admin-id").value.trim();
         if(!inputId) return alert("Введите ID игрока!");
@@ -227,24 +226,23 @@
         }
     }
 
-    // [АДМИН] Начислить деньги
+    // [АДМИН] Начислить монеты
     function adminGiveCoins() {
         const targetId = document.getElementById("target-user-id").value.trim();
-const amount = parseInt(document.getElementById("admin-coins-amount").value);
+        const amount = parseInt(document.getElementById("admin-coins-amount").value);
 if(!amount || amount <= 0) return alert("Введите корректную сумму!");
 let myId = localStorage.getItem("current_player_id");
-// Если поле ID пустое или совпадает с вашим — начисляем себе
 if(!targetId || targetId === myId) {
 let bal = parseInt(localStorage.getItem("player_balance") || "0");
 localStorage.setItem("player_balance", (bal + amount).toString());
 alert(💰 Начислено ${amount} монет на ваш баланс!);
 } else {
-alert(💰 Команда отправлена! Игроку ${targetId} будет начислено ${amount} ₡ при входе.);
+alert(💰 Монеты отправлены! Игрок ${targetId} получит ${amount} ₡ при открытии страницы.);
 }
 document.getElementById("admin-coins-amount").value = "";
 updateUI();
 }
-// [АДМИН] Выдать предмет в инвентарь
+// [АДМИН] Добавить предмет в инвентарь
 function adminGiveItem() {
 const targetId = document.getElementById("target-user-id").value.trim();
 const item = document.getElementById("admin-item-select").value;
@@ -253,13 +251,13 @@ if(!targetId || targetId === myId) {
 let inventory = JSON.parse(localStorage.getItem("player_inventory") || "[]");
 inventory.push(item);
 localStorage.setItem("player_inventory", JSON.stringify(inventory));
-alert(🎒 Предмет "${item}" успешно добавлен в ваш инвентарь!);
+alert(🎒 Предмет "${item}" добавлен в ваш инвентарь!);
 } else {
-alert(✅ Предмет "${item}" успешно передан игроку ${targetId}!);
+alert(✅ Предмет "${item}" передан игроку ${targetId}!);
 }
 updateUI();
 }
-// [АДМИН] Создать новый промокод с выбором кейса
+// [АДМИН] Создать новый кастомный промокод
 function adminCreatePromo() {
 const code = document.getElementById("new-promo-code").value.trim().toUpperCase();
 const caseType = document.getElementById("new-promo-case-type").value;
@@ -270,7 +268,7 @@ localStorage.setItem("db_promos", JSON.stringify(promos));
 alert(🎟 Промокод "${code}" успешно создан для кейса: ${caseType}!);
 document.getElementById("new-promo-code").value = "";
 }
-// [ИГРОК] Активация промокода в интерфейсе
+// [ИГРОК] Логика проверки промокода
 function playerActivatePromo() {
 const input = document.getElementById("user-promo-input").value.trim().toUpperCase();
 if(!input) return alert("Введите промокод!");
@@ -278,17 +276,16 @@ let promos = JSON.parse(localStorage.getItem("db_promos") || "{}");
 if (promos[input]) {
 let caseName = promos[input];
 let rewardItem = CASE_REWARDS[caseName] || "⚡ Сигма Секрет";
-// Начисляем предмет игроку
 let inventory = JSON.parse(localStorage.getItem("player_inventory") || "[]");
 inventory.push(rewardItem);
 localStorage.setItem("player_inventory", JSON.stringify(inventory));
-alert(🥳 ПРОМОКОД УСПЕШНО АКТИВИРОВАН 🥳\nТВОЙ КЕЙС: ${caseName}\n🎁 Выпал предмет: ${rewardItem}!);
+alert(🥳 ПРОМОКОД УСПЕШНО АКТИВИРОВАН 🥳\nТВОЙ КЕЙС: ${caseName}\n🎁 Награда добавлена: ${rewardItem}!);
 document.getElementById("user-promo-input").value = "";
-// Удаляем промокод после использования (одноразовый)
+// Удаляем одноразовый промокод после использования
 delete promos[input];
 localStorage.setItem("db_promos", JSON.stringify(promos));
 updateUI();
 } else {
-alert("❌ Такого промокода не существует или он уже был активирован!");
+alert("❌ Такого промокода не существует или он уже активирован!");
 }
 }
